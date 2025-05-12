@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   // Add this block to ignore TypeScript errors during build
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 };
 

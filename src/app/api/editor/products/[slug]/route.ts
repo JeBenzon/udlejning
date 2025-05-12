@@ -1,18 +1,41 @@
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 const productsDirectory = path.join(process.cwd(), 'content/products');
 const imagesBaseDirectory = path.join(process.cwd(), 'public/images/products'); // For image handling later
 
+// Helper to extract slug from pathname for this route
+// This function is no longer needed as slug comes from context.params
+/*
+function getSlugFromProductPathname(pathname: string): string | undefined {
+  // Pathname is like /api/editor/products/some-product-slug
+  const parts = pathname.split('/');
+  // Expected structure: ['', 'api', 'editor', 'products', 'SLUG']
+  if (parts.length >= 5) {
+    return parts[parts.length - 1]; // The last part should be the slug
+  }
+  return undefined;
+}
+*/
+
 // GET a single product for editing
-export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> } // Updated signature
+) {
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const slug = params.slug;
+  const { slug } = await params; // Await params to get slug
+
+  if (!slug) {
+    // This check might be redundant if Next.js guarantees slug presence, but safe to keep
+    return NextResponse.json({ error: 'Could not determine product slug from URL path' }, { status: 400 });
+  }
+
   const filePath = path.join(productsDirectory, `${slug}.mdx`);
 
   try {
@@ -31,12 +54,21 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
 }
 
 // PUT (update) a product
-export async function PUT(request: NextRequest, { params }: { params: { slug: string } }) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> } // Updated signature
+) {
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const slug = params.slug;
+  const { slug } = await params; // Await params to get slug
+
+  if (!slug) {
+    // This check might be redundant
+    return NextResponse.json({ error: 'Could not determine product slug from URL path' }, { status: 400 });
+  }
+
   const filePath = path.join(productsDirectory, `${slug}.mdx`);
 
   try {
@@ -92,12 +124,15 @@ export async function PUT(request: NextRequest, { params }: { params: { slug: st
 }
 
 // DELETE a product
-export async function DELETE(request: NextRequest, { params }: { params: { slug: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> } // Updated signature
+) {
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const slug = params.slug;
+  const { slug } = await params; // Await params to get slug
   const mdxFilePath = path.join(productsDirectory, `${slug}.mdx`);
   const imageDirectoryPath = path.join(imagesBaseDirectory, slug);
 
