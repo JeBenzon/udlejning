@@ -7,6 +7,30 @@ import { formatCurrency } from '@/lib/utils';
 import { notFound } from 'next/navigation';
 
 const productsDirectory = path.join(process.cwd(), 'content/products');
+const imagesBaseDirectory = path.join(process.cwd(), 'public/images/products'); // Path to product images root
+const imagesPublicPath = '/images/products'; // Public URL path
+
+// Function to get sorted image URLs for a specific product slug
+function getProductImages(slug: string): string[] {
+  const productImageDir = path.join(imagesBaseDirectory, slug);
+  try {
+    if (!fs.existsSync(productImageDir)) {
+      console.warn(`Image directory not found for product: ${slug} at ${productImageDir}`);
+      return []; // No images if directory doesn't exist
+    }
+    const imageFilenames = fs.readdirSync(productImageDir);
+    // Filter for common image extensions and sort alphabetically
+    const sortedImageFiles = imageFilenames
+      .filter(filename => /\.(jpg|jpeg|png|webp|gif)$/i.test(filename))
+      .sort((a, b) => a.localeCompare(b)); // Sort alphabetically
+
+    // Return full public paths
+    return sortedImageFiles.map(filename => `${imagesPublicPath}/${slug}/${filename}`);
+  } catch (error) {
+    console.error(`Error reading images for product ${slug}:`, error);
+    return []; // Return empty on error
+  }
+}
 
 export async function generateStaticParams() {
   try {
@@ -26,58 +50,63 @@ async function getProductBySlug(slug: string) {
   const fullPath = path.join(productsDirectory, `${slug}.mdx`);
   try {
     const fileContents = fs.readFileSync(fullPath, 'utf8');
-    // Use gray-matter to parse the post metadata section
     const { data, content } = matter(fileContents);
 
-    // Ensure required fields are present (add checks as needed based on your frontmatter)
-     if (!data.name || !data.description || !data.imageUrl || typeof data.dailyPrice !== 'number' || typeof data.weekendPrice !== 'number' || typeof data.weeklyPrice !== 'number' || typeof data.deposit !== 'number') {
-        console.error(`Missing required frontmatter fields in ${slug}.mdx`);
-        return null; 
-     }
+    // Fetch associated images
+    const imageUrls = getProductImages(slug);
 
-    // Combine the data with the slug and content
+    // Validation (check frontmatter and ensure at least one image exists if required)
+    if (!data.name || !data.description || typeof data.dailyPrice !== 'number' || typeof data.weekendPrice !== 'number' || typeof data.weeklyPrice !== 'number' || typeof data.deposit !== 'number' || imageUrls.length === 0) {
+        console.error(`Missing required frontmatter fields or no images found in ${slug}.mdx`);
+        return null;
+    }
+
     return {
       slug,
-      frontmatter: data as { 
-        name: string; 
-        description: string; 
-        category: string; // Assuming category is still needed
-        imageUrl: string; 
+      frontmatter: data as {
+        name: string;
+        description: string;
+        category: string;
+        // imageUrl: string; // Removed imageUrl
         dailyPrice: number;
         weekendPrice: number;
         weeklyPrice: number;
         deposit: number;
       },
+      imageUrls, // Add the list of image URLs
       content,
     };
   } catch (error) {
-    // Handle file not found or other read errors
     console.error(`Error reading product file ${slug}.mdx:`, error);
-    return null; // Return null if file doesn't exist or has issues
+    return null;
   }
 }
 
 export default async function ProductPage({ params }: { params: { slug: string } }) {
   const product = await getProductBySlug(params.slug);
-  
+
   if (!product) {
-    notFound(); // Trigger 404 if product wasn't found or had errors
+    notFound();
   }
 
-  const { frontmatter, content } = product;
+  const { frontmatter, imageUrls, content } = product;
+  const primaryImageUrl = imageUrls[0]; // Use the first image as primary
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="relative aspect-square">
+          {/* Use the primary image URL */}
           <Image
-            src={frontmatter.imageUrl}
+            src={primaryImageUrl}
             alt={frontmatter.name}
             fill
             className="object-cover rounded-lg"
+            priority // Prioritize loading the main product image
           />
+          {/* TODO: Add gallery/carousel for other images in `imageUrls` if needed */}
         </div>
-        
+
         <div>
           <h1 className="text-3xl font-bold mb-2">{frontmatter.name}</h1>
           <p className="text-lg text-muted-foreground mb-6">{frontmatter.description}</p>
@@ -109,9 +138,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
           </button>
         </div>
       </div>
-      
+
       <div className="mt-12 prose max-w-none">
-         {/* Use MDXRemote to render the content */}
          <MDXRemote source={content} />
       </div>
     </div>

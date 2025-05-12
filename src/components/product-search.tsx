@@ -7,7 +7,7 @@ import { ProductCard } from '@/components/product-card';
 interface Product {
   name: string;
   description: string;
-  imageUrl: string;
+  imageUrls: string[];
   dailyPrice: number;
   slug: string;
   category: string;

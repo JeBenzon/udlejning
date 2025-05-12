@@ -6,6 +6,26 @@ import { ProductSearch } from '@/components/product-search';
 // or we can define it here if needed. For now, we'll ensure the shape matches.
 
 const productsDirectory = path.join(process.cwd(), 'content/products');
+const imagesBaseDirectory = path.join(process.cwd(), 'public/images/products'); // Path to product images root
+const imagesPublicPath = '/images/products'; // Public URL path
+
+// Function to get sorted image URLs (can be shared or duplicated from [slug]/page.tsx)
+function getProductImages(slug: string): string[] {
+  const productImageDir = path.join(imagesBaseDirectory, slug);
+  try {
+    if (!fs.existsSync(productImageDir)) {
+      return [];
+    }
+    const imageFilenames = fs.readdirSync(productImageDir);
+    const sortedImageFiles = imageFilenames
+      .filter(filename => /\.(jpg|jpeg|png|webp|gif)$/i.test(filename))
+      .sort((a, b) => a.localeCompare(b));
+    return sortedImageFiles.map(filename => `${imagesPublicPath}/${slug}/${filename}`);
+  } catch (error) {
+    console.error(`Error reading images for product ${slug} in getAllProducts:`, error);
+    return [];
+  }
+}
 
 // Define a type for the product data we will extract
 // This should match the structure ProductSearch and ProductCard expect
@@ -14,7 +34,7 @@ interface ProductData {
   name: string;
   description: string;
   category: string;
-  imageUrl: string;
+  imageUrls: string[]; // Added imageUrls
   dailyPrice: number;
   // Add other fields if ProductSearch/ProductCard use them, e.g., weekendPrice, weeklyPrice
 }
@@ -29,10 +49,11 @@ async function getAllProducts(): Promise<ProductData[]> {
         const fullPath = path.join(productsDirectory, filename);
         try {
           const fileContents = fs.readFileSync(fullPath, 'utf8');
-          const { data } = matter(fileContents); // We only need frontmatter for the listing
+          const { data } = matter(fileContents);
+          const imageUrls = getProductImages(slug);
 
-          // Basic validation for fields required by ProductCard/ProductSearch
-          if (!data.name || !data.description || !data.imageUrl || typeof data.dailyPrice !== 'number' || !data.category) {
+          // Validation (check frontmatter WITHOUT requiring images)
+          if (!data.name || !data.description || typeof data.dailyPrice !== 'number' || !data.category) {
             console.warn(`Skipping ${filename} due to missing required frontmatter for product listing.`);
             return null;
           }
@@ -42,10 +63,8 @@ async function getAllProducts(): Promise<ProductData[]> {
             name: data.name,
             description: data.description,
             category: data.category,
-            imageUrl: data.imageUrl,
+            imageUrls, // Pass empty array if no images found
             dailyPrice: data.dailyPrice,
-            // Ensure this object matches the ProductData interface
-            // and the props expected by ProductCard via ProductSearch
           } as ProductData;
         } catch (readError) {
           console.error(`Error reading or parsing ${filename}:`, readError);
@@ -56,13 +75,14 @@ async function getAllProducts(): Promise<ProductData[]> {
     return products.filter(product => product !== null) as ProductData[];
   } catch (error) {
     console.error("Error reading products directory for getAllProducts:", error);
-    return []; // Return empty array on error
+    return [];
   }
 }
 
 
 export default async function Home() {
   const allProducts = await getAllProducts();
+  console.log("Fetched products for homepage:", allProducts);
 
   return (
     <div className="container mx-auto px-4 py-8">
