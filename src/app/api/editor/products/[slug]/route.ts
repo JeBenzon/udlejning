@@ -6,19 +6,13 @@ import { NextRequest, NextResponse } from 'next/server';
 const productsDirectory = path.join(process.cwd(), 'content/products');
 const imagesBaseDirectory = path.join(process.cwd(), 'public/images/products'); // For image handling later
 
-interface ProductParams {
-  params: {
-    slug: string;
-  };
-}
-
 // GET a single product for editing
-export async function GET(request: NextRequest, { params }: ProductParams) {
+export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { slug } = params;
+  const slug = params.slug;
   const filePath = path.join(productsDirectory, `${slug}.mdx`);
 
   try {
@@ -37,12 +31,12 @@ export async function GET(request: NextRequest, { params }: ProductParams) {
 }
 
 // PUT (update) a product
-export async function PUT(request: NextRequest, { params }: ProductParams) {
+export async function PUT(request: NextRequest, { params }: { params: { slug: string } }) {
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { slug } = params;
+  const slug = params.slug;
   const filePath = path.join(productsDirectory, `${slug}.mdx`);
 
   try {
@@ -98,12 +92,12 @@ export async function PUT(request: NextRequest, { params }: ProductParams) {
 }
 
 // DELETE a product
-export async function DELETE(request: NextRequest, { params }: ProductParams) {
+export async function DELETE(request: NextRequest, { params }: { params: { slug: string } }) {
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { slug } = params;
+  const slug = params.slug;
   const mdxFilePath = path.join(productsDirectory, `${slug}.mdx`);
   const imageDirectoryPath = path.join(imagesBaseDirectory, slug);
 
