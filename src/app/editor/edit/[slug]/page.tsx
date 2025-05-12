@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, ChangeEvent } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,6 @@ interface ProductData {
 }
 
 export default function EditProductPage() {
-  const router = useRouter();
   const params = useParams();
   const slug = typeof params.slug === 'string' ? params.slug : '';
 

@@ -1,16 +1,9 @@
-import fs from 'fs';
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { stat, mkdir, writeFile, readdir, unlink } from 'fs/promises'; // Using promise-based fs
 
 const imagesBaseDirectory = path.join(process.cwd(), 'public/images/products');
 const imagesPublicPath = '/images/products'; // Public URL path
-
-interface ImageRouteParams {
-  params: {
-    slug: string;
-  };
-}
 
 // GET existing images for a product
 export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
@@ -30,8 +23,8 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
 
     const imageUrls = sortedImageFiles.map(filename => `${imagesPublicPath}/${slug}/${filename}`);
     return NextResponse.json(imageUrls);
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
       return NextResponse.json([]); // No images or directory doesn't exist
     }
     console.error(`Error reading images for product ${slug}:`, error);
@@ -113,8 +106,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { slug:
     await stat(imagePath); // Check if file exists
     await unlink(imagePath);
     return NextResponse.json({ message: `Image '${filename}' deleted successfully from product '${slug}'` });
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
       return NextResponse.json({ error: `Image '${filename}' not found for product '${slug}'` }, { status: 404 });
     }
     console.error(`Error deleting image '${filename}' for product ${slug}:`, error);
